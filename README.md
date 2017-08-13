@@ -20,8 +20,8 @@ iKilledAppl3: http://is.gd/donate2ToxicAppl3Inc
 Skittyblock: http://paypal.me/Skittyblock
 
 # Screenshots
-![Screenshot](https://raw.githubusercontent.com/Skittyblock/Meteora/master/Screenshot1.jpg)
-![Screenshot å2](https://raw.githubusercontent.com/Skittyblock/Meteora/master/Screenshot2.jpg)
+![Screenshot](https://raw.githubusercontent.com/iKilledAppl3/Meteora/master/Screenshot1.jpg)
+![Screenshot å2](https://raw.githubusercontent.com/iKilledAppl3/Meteora/master/Screenshot2.jpg)
 
 # Video
 https://twitter.com/iKilledAppl3/status/892202494566203393
