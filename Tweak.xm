@@ -27,6 +27,7 @@ UIImageView* _artworkImageView;
 CGRect artworkFrame;
 SBMediaController *mediaController = [%c(SBMediaController) sharedInstance];
 SBUILegibilityLabel *timeLabel;
+UIView *blurView;
 
 
 // VOLUME CONTROL
@@ -131,10 +132,12 @@ SBUILegibilityLabel *timeLabel;
 }
 
 // LAYOUT LOCKSCREEN VIEWS
--(void)layoutSubviews {
+- (void)layoutSubviews {
   %orig;
 
   if (kEnabled) {
+    UIView *_foregroundLockView = MSHookIvar<UIView*>(self, "_foregroundLockView");
+
     // Grabbers
     SBUIChevronView *topGrabberView = [self valueForKey:@"_topGrabberView"];
     topGrabberView.alpha = 1;
@@ -178,16 +181,20 @@ SBUILegibilityLabel *timeLabel;
       //lockTapGesture.numberOfTapsRequired = 2;
       [self addGestureRecognizer:lockTapGesture];
     }
+
+    // Remove duplicate notification view
+    UIView * _notificationView = [self valueForKey:@"_notificationView"];
+    [_notificationView removeFromSuperview];
     
     // Notifications View
-    for(UIView *notifView in self.subviews) {
+    for(UIView *notifView in _foregroundLockView.subviews) {
       if([notifView class] == NSClassFromString(@"MTONotificationsView")) {
 	return;
       }
     }
-    UIView *notifsView = [[%c(MTONotificationsView) alloc] initWithFrame:CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width,  400)];
-    [self addSubview:notifsView];
-    [self sendSubviewToBack:notifsView];
+    UIView *notifsView = [[%c(MTONotificationsView) alloc] initWithFrame:CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width,  [UIScreen mainScreen].bounds.size.height)];
+    [_foregroundLockView addSubview:notifsView];
+    
   }
 }
 
@@ -195,6 +202,7 @@ SBUILegibilityLabel *timeLabel;
 %new
 -(void)doubleTapLockAction {
   [((SpringBoard *)[%c(SpringBoard) sharedApplication]) _simulateLockButtonPress];
+  [self layoutSubviews];
 }
 
 // SHOW NOTIFICATION CENTER
@@ -278,6 +286,40 @@ SBUILegibilityLabel *timeLabel;
 }
 %end
 
+@interface SBLockScreenNotificationListView : UIView
+@end
+
+// NOTIFICATION BLUR VIEW
+%hook SBLockScreenNotificationListView
+- (void)updateForAdditionOfItemAtIndex:(unsigned long long)arg1 allowHighlightOnInsert:(BOOL)arg2 {
+  %orig;
+
+  // Check if exists
+  for(UIView *view in self.superview.superview.superview.superview.subviews) {
+    if(view.tag == 167) {
+      return;
+    }
+  }
+
+  //UIView *_foregroundLockView = MSHookIvar<UIView*>(%c(SBLockScreen), "_foregroundLockView");
+
+  blurView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width,  [UIScreen mainScreen].bounds.size.height)];
+  blurView.backgroundColor = [UIColor clearColor];
+  blurView.alpha = 0;
+  blurView.tag = 167;
+
+  UIVisualEffectView *blurEffect = [[UIVisualEffectView alloc]initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleDark]];
+  blurEffect.frame = blurView.bounds;
+  [blurView addSubview:blurEffect];
+
+  [self.superview.superview.superview.superview addSubview:blurView];
+  [self.superview.superview.superview.superview sendSubviewToBack:blurView];
+
+  [UIView animateWithDuration:0.4 animations:^(void) {
+    blurView.alpha = 1;
+  } completion:nil];
+}
+%end
 
 // SHOW TIME AND DATE
 %hook SBFLockScreenDateView
@@ -307,43 +349,6 @@ SBUILegibilityLabel *timeLabel;
   }
 }
 %end
-
-// DISABLE HOME PRESS UNLOCK (NOT WORKING)
-%hook SBLockScreenViewControllerBase 
--(id)createHomeButtonShowPasscodeRecognizerForHomeButtonPress {
-  if (kEnabled) {
-    return nil;
-  } else {
-    return %orig;
-  }
-}
-
-// TOUCH ID FIX (NOT WORKING)
--(void)handleBiometricEvent:(unsigned long long)arg1 {
-  %orig;
-  
-  if (kEnabled && [[%c(SBLockScreenManager) sharedInstance] isUILocked] && arg1 == kTouchIDSuccess) {
-    SystemSoundID soundID;
-    AudioServicesCreateSystemSoundID((CFURLRef)[NSURL fileURLWithPath:unlockSound],&soundID);
-    AudioServicesPlaySystemSound(soundID);
-  } else {
-    %orig;
-  }
-}
-%end
-    
-%hook SBLockScreenViewController 
--(void)handleBiometricEvent:(unsigned long long)arg1 {
-  %orig;
-  
-  if (kEnabled && [[%c(SBLockScreenManager) sharedInstance] isUILocked] && arg1 == kTouchIDSuccess) {
-    SystemSoundID soundID;
-    AudioServicesCreateSystemSoundID((CFURLRef)[NSURL fileURLWithPath:unlockSound],&soundID);
-    AudioServicesPlaySystemSound(soundID);
-  } else {
-    %orig;
-  }
-}
 
 // SHOW MEDIA CONTROLS
 %new -(void)presentMediaControls {
@@ -405,49 +410,37 @@ SBUILegibilityLabel *timeLabel;
 }
 %end
 
-// TOUCH ID FIX (NOT WORKING)
-%hook SBLockScreenManager
-- (void)dashBoardViewController:(id)arg1 requestsTouchIDDisabled:(BOOL)arg2 forReason:(id)arg3 {
-  %orig(arg1, FALSE, arg3);
-}
-
-- (void)setBiometricAutoUnlockingDisabled:(BOOL)arg1 forReason:(id)arg2 {
-  %orig(FALSE, arg2);
-}
-
-- (void)homeButtonShowPasscodeRecognizerRequestsPasscodeUIToBeShown:(id)arg1 {
-  if (!kEnabled) {
-    %orig;
-  }
-}
-
-- (void)homeButtonShowPasscodeRecognizerDidFailToRecognize:(id)arg1 {
-  if (!kEnabled) {
-    %orig;
-  }
-}
-
-- (void)_setHomeButtonShowPasscodeRecognizer:(id)arg1 {
-  if (!kEnabled) {
-    %orig;
-  }
-}
-%end
-
-%hook SBUIPasscodeLockViewBase
-- (void)setBiometricAuthenticationAllowed:(BOOL)arg1 {
-  if (kEnabled) {
-    %orig(TRUE);
+// TOUCH ID FIX (THX DGH0ST)
+%hook SBFUserAuthenticationController
+-(void)_revokeAuthenticationImmediately:(BOOL)arg1 forPublicReason:(id)arg2 {
+  if (kEnabled && arg1 && ([arg2 isEqualToString:@"BioUnlock in Old LockScreen"] || [arg2 isEqualToString:@"StartupTransitionToLockOut"])) {
+    
   } else {
-    %orig;
+    %orig(arg1, arg2);
   }
 }
 
-- (BOOL)isBiometricAuthenticationAllowed {
-  if (kEnabled) {
-    return TRUE;
+-(void)revokeAuthenticationImmediatelyForPublicReason:(id)arg1 {
+  if (kEnabled && ([arg1 isEqualToString:@"BioUnlock in Old LockScreen"] || [arg1 isEqualToString:@"StartupTransitionToLockOut"])) {
+
   } else {
-    return %orig;
+    %orig(arg1);
+  }
+}
+
+-(void)revokeAuthenticationImmediatelyIfNecessaryForPublicReason:(id)arg1 {
+  if (kEnabled && ([arg1 isEqualToString:@"BioUnlock in Old LockScreen"] || [arg1 isEqualToString:@"StartupTransitionToLockOut"])) {
+
+  } else {
+    %orig(arg1);
+  }
+}
+
+-(void)revokeAuthenticationIfNecessaryForPublicReason:(id)arg1 {
+  if (kEnabled && ([arg1 isEqualToString:@"BioUnlock in Old LockScreen"] || [arg1 isEqualToString:@"StartupTransitionToLockOut"])) {
+
+  } else {
+    %orig(arg1);
   }
 }
 %end

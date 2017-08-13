@@ -1,5 +1,6 @@
 ARCHS = armv7 arm64
 TARGET = iphone:clang:latest
+export PACKAGE_VERSION = 1.0
 
 include $(THEOS)/makefiles/common.mk
 
@@ -9,7 +10,7 @@ Meteora_FRAMEWORKS = UIKit CoreGraphics AudioToolbox AVFoundation
 Meteora_PRIVATE_FRAMEWORKS = MediaRemote
 Meteora_EXTRA_FRAMEWORKS += Cephei
 Meteora += -Wl,-segalign,4000
-Meteora_CFLAGS = -Wno-deprecated -Wno-deprecated-declarations -Wno-error
+Meteora_CFLAGS = -Wno-deprecated -Wno-deprecated-declarations
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 

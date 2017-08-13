@@ -10,9 +10,7 @@
 NSString *unlockSound = [[NSBundle bundleWithPath:@"/Library/Application Support/Durango/"] pathForResource:@"unlock" ofType:@"caf"];
 
 
-@interface SBDashBoardUnlockBehavior : NSObject {
-
-}
+@interface SBDashBoardUnlockBehavior : NSObject
 @end
 
 @interface SBLockScreenViewControllerBase : NSObject {
